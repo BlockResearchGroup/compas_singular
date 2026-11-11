@@ -86,7 +86,6 @@ def clean(ctx, docs=True, bytecode=True, builds=True):
 
         if docs:
             folders.append('docs/api/generated')
-            folders.append('docsource/api/generated')
 
         folders.append('dist/')
 
@@ -100,26 +99,6 @@ def clean(ctx, docs=True, bytecode=True, builds=True):
 
         for folder in folders:
             rmtree(os.path.join(BASE_FOLDER, folder), ignore_errors=True)
-
-
-@task(help={
-      'rebuild': 'True to clean all previously built docs before starting, otherwise False.',
-      'doctest': 'True to run doctests, otherwise False.',
-      'check_links': 'True to check all web links in docs for validity, otherwise False.'})
-def docs(ctx, doctest=False, rebuild=True, check_links=False):
-    """Builds package's HTML documentation."""
-
-    if rebuild:
-        clean(ctx)
-
-    with chdir(BASE_FOLDER):
-        if doctest:
-            ctx.run('sphinx-build -E -b doctest docsource docs')
-
-        ctx.run('sphinx-build -E -b html docsource docs')
-
-        if check_links:
-            ctx.run('sphinx-build -E -b linkcheck docsource docs')
 
 
 @task()
