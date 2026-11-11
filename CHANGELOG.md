@@ -12,3 +12,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 ### Removed
+
+* Removed the Sphinx documentation sources, the docs workflow, the `invoke docs` task and the Sphinx dev requirements.
