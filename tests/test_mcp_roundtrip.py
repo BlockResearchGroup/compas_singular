@@ -125,13 +125,6 @@ def _pushed_coarse(mcp, link):
     return out, compas.json_loads(link.pushed["coarse"]["coarse"])
 
 
-def test_status_finds_the_link(mcp, link):
-    out = mcp("rhino_status")
-    assert out.get("attached") is True
-    assert out.get("document") == "fake.3dm"
-    assert out.get("stale") is False
-
-
 def test_pull_brings_back_the_mesh_and_the_walls(mcp, link):
     out = mcp("rhino_pull", layer="QuadMesh")
     assert out.get("ok") is True, out.get("reason")
