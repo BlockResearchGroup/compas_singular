@@ -1,29 +1,16 @@
-"""
-********************************************************************************
-compas_singular.topology
-********************************************************************************
-
-.. currentmodule:: compas_singular.topology
-
-
-Coloring
-========
-
-Coloring elements based on their topology.
-
-.. autosummary::
-    :toctree: generated/
-    :nosignatures:
-
-    is_adjacency_two_colorable
-
-
-"""
+"""Topological properties of meshes."""
 
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
+from __future__ import annotations
 
-from .coloring import *  # noqa: F401 F403
+from compas_singular.topology.coloring import *  # noqa: F401 F403
 
-__all__ = [name for name in dir() if not name.startswith('_')]
+import types  # noqa: E402
+
+# Only re-export names bound in this namespace, never the submodules themselves:
+# ``from .foo import *`` also binds ``foo`` as an attribute of this package, and
+# re-exporting that module object shadows any function or subpackage of the same
+# name further up the chain.
+__all__ = [name for name, obj in list(globals().items()) if not name.startswith("_") and not isinstance(obj, types.ModuleType)]

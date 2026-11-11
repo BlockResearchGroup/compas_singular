@@ -1,18 +1,14 @@
-from __future__ import print_function
 from __future__ import absolute_import
+from __future__ import annotations
 from __future__ import division
+from __future__ import print_function
+
+from typing import Any
+
+__all__ = ["list_split", "sublist_from_to_items_in_closed_list", "are_items_in_list", "common_items", "remove_isomorphism_in_integer_list"]
 
 
-__all__ = [
-    'list_split',
-    'sublist_from_to_items_in_closed_list',
-    'are_items_in_list',
-    'common_items',
-    'remove_isomorphism_in_integer_list'
-]
-
-
-def list_split(l, indices):
+def list_split(lst: list[Any], indices: list[int]) -> list[list[Any]]:
     """Split list at given indices.
     Closed lists have the same first and last elements.
     If the list is closed, splitting wraps around if the first or last index is not in the indices to split.
@@ -20,7 +16,7 @@ def list_split(l, indices):
 
     Parameters
     ----------
-    l : list
+    lst : list
             A list.
     indices : list
             A list of indices to split.
@@ -32,9 +28,9 @@ def list_split(l, indices):
 
     """
 
-    n = len(l)
+    n = len(lst)
 
-    if l[0] == l[-1]:
+    if lst[0] == lst[-1]:
         closed = True
         if n - 1 in indices:
             indices.remove(n - 1)
@@ -47,7 +43,7 @@ def list_split(l, indices):
 
     split_lists = []
     current_list = []
-    for index, item in enumerate(l):
+    for index, item in enumerate(lst):
         current_list.append(item)
         if (index in indices and index != 0) or index == n - 1:
             split_lists.append(current_list)
@@ -61,12 +57,12 @@ def list_split(l, indices):
     return split_lists
 
 
-def sublist_from_to_items_in_closed_list(l, from_item, to_item):
+def sublist_from_to_items_in_closed_list(lst: list[Any], from_item: Any, to_item: Any) -> list[Any] | None:
     """Return sublist between oe item to another.
 
     Parameters
     ----------
-    l : list
+    lst : list
             A list.
     from_item
             An item to be found in the list. The beginning of the sublist.
@@ -81,25 +77,25 @@ def sublist_from_to_items_in_closed_list(l, from_item, to_item):
 
     if from_item == to_item:
         return [from_item]
-    if l[0] != l[-1]:
-        l.append(l[0])
-    from_idx = l.index(from_item)
-    to_idx = l.index(to_item)
-    sublists = list_split(l, [from_idx, to_idx])
+    if lst[0] != lst[-1]:
+        lst.append(lst[0])
+    from_idx = lst.index(from_item)
+    to_idx = lst.index(to_item)
+    sublists = list_split(lst, [from_idx, to_idx])
 
     for sublist in sublists:
         if sublist[0] == from_item:
             return sublist
 
 
-def are_items_in_list(items, l):
+def are_items_in_list(items: list[Any], lst: list[Any]) -> bool:
     """Check if items are in a list.
 
     Parameters
     ----------
     items : list
             A list of items (order does not matter).
-    l : list
+    lst : list
             A list.
 
     Returns
@@ -109,12 +105,12 @@ def are_items_in_list(items, l):
     """
 
     for i in items:
-        if i not in l:
+        if i not in lst:
             return False
     return True
 
 
-def common_items(l1, l2):
+def common_items(l1: list[Any], l2: list[Any]) -> list[Any]:
     """Return common items in two lists.
 
     Parameters
@@ -133,26 +129,26 @@ def common_items(l1, l2):
     return [item for item in l1 if item in l2]
 
 
-def remove_isomorphism_in_integer_list(l):
+def remove_isomorphism_in_integer_list(lst: list[int]) -> list[int]:
     # remove isomorphisms in list (open or closed)
     # interpreted as a polyedge
 
-    if len(l) < 2:
-        return l
+    if len(lst) < 2:
+        return lst
 
     # if closed: min value first, and its minimum neighbour value second
-    if l[0] == l[-1]:
-        l = l[:-1]
+    if lst[0] == lst[-1]:
+        lst = lst[:-1]
         candidates = []
 
-        start = min(l)
-        for i, key in enumerate(l):
+        start = min(lst)
+        for i, key in enumerate(lst):
             # collect all candidates, there may be multiple minimum values and multiple minimum neighbours
             if key == start:
-                candidate = l[i:] + l[:i] + [l[i]]
+                candidate = lst[i:] + lst[:i] + [lst[i]]
                 candidates.append(candidate)
                 candidates.append(list(reversed(candidate)))
-        for k in range(1, len(l) + 1):
+        for k in range(1, len(lst) + 1):
             n = len(candidates)
             if n == 1:
                 break
@@ -167,21 +163,21 @@ def remove_isomorphism_in_integer_list(l):
                 if sum(candidate[:k]) > min_x:
                     del candidates[n - i - 1]
         # potentially multiple canidates left due to symmetry in list, but no isomorphism left
-        l = candidates[0]
+        lst = candidates[0]
 
     # if open: minimum value extremmity at the start
     else:
-        if l[0] > l[-1]:
-            l = list(reversed(l))
+        if lst[0] > lst[-1]:
+            lst = list(reversed(lst))
 
-    return l
+    return lst
 
 
 # ==============================================================================
 # Main
 # ==============================================================================
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     pass
 
     # import compas

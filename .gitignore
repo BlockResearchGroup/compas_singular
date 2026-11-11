@@ -22,6 +22,8 @@ sdist/
 var/
 wheels/
 *.egg-info/
+# Written by setuptools-scm on install.
+src/compas_singular/_version.py
 .installed.cfg
 *.egg
 
@@ -60,9 +62,6 @@ instance/
 
 # Scrapy stuff:
 .scrapy
-
-# Sphinx documentation
-docs/_build/
 
 # PyBuilder
 target/
@@ -114,3 +113,19 @@ temp/**
 .DS_Store
 
 .vscode
+
+# development examples/tests kept locally, not published
+examples/dev_examples_tests/
+
+# local notes, not published
+markdowns/
+design_notes/
+
+# Rhino plugin project, yak builds and icon sources: kept beside the plugin, never published
+rhino_plugin/project/
+*.rhproj
+*.yak
+
+# frame-field route v2 (local copy, not tracked)
+src/compas_singular/framefield_param/
+rhino_plugin/commands/CMD10_field_quad_mesh.py

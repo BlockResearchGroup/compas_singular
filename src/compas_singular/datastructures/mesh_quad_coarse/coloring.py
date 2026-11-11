@@ -1,19 +1,22 @@
 from __future__ import absolute_import
-from __future__ import print_function
+from __future__ import annotations
 from __future__ import division
+from __future__ import print_function
 
-from compas.utilities import pairwise
+from typing import TYPE_CHECKING
 
-from .mesh_quad_coarse import CoarseQuadMesh
-from ..mesh_quad.coloring import quad_mesh_strip_2_coloring
+from compas.itertools import pairwise
+from compas_singular.datastructures.mesh_quad.coloring import quad_mesh_strip_2_coloring
+from compas_singular.datastructures.mesh_quad_coarse.mesh_quad_coarse import CoarseQuadMesh
+
+if TYPE_CHECKING:
+    from compas_singular.datastructures import QuadMesh
 
 
-__all__ = [
-    'dense_quad_mesh_polyedge_2_coloring'
-]
+__all__ = ["dense_quad_mesh_polyedge_2_coloring"]
 
 
-def dense_quad_mesh_polyedge_2_coloring(quad_mesh):
+def dense_quad_mesh_polyedge_2_coloring(quad_mesh: "QuadMesh") -> dict[int, int | None]:
     # assume that strips and polyedges are collected in the quad mesh
 
     # get coarse quad mesh
@@ -26,7 +29,7 @@ def dense_quad_mesh_polyedge_2_coloring(quad_mesh):
     coarse_edge_to_color = {edge: coarse_skey_to_color[skey] for skey in coarse_quad_mesh.strips() for edge in coarse_quad_mesh.strip_edges(skey)}
 
     # get dense polyedge color
-    dense_polyedge_to_color = {tuple(coarse_quad_mesh.attributes['edge_coarse_to_dense'][u][v]): color for (u, v), color in coarse_edge_to_color.items()}
+    dense_polyedge_to_color = {tuple(coarse_quad_mesh.attributes["edge_coarse_to_dense"][u][v]): color for (u, v), color in coarse_edge_to_color.items()}
 
     # get some dense edge color
     some_dense_edge_to_color = {edge: color for polyedge, color in dense_polyedge_to_color.items() for edge in pairwise(polyedge)}
@@ -57,7 +60,7 @@ def dense_quad_mesh_polyedge_2_coloring(quad_mesh):
 # Main
 # ==============================================================================
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     pass
 
     # import time

@@ -1,62 +1,45 @@
 name: docs
-
 on:
   push:
     branches:
       - main
-    tags:
-      - 'v*'
   pull_request:
     branches:
       - main
-
+permissions:
+  contents: write
 jobs:
-  build:
-    name: build and deploy docs
+  # A broken page or docstring fails the PR, not the deploy on main.
+  check:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-
-      - uses: compas-dev/compas-actions.docs@v1.0.0
-        id: docs
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
-          dest: deploy
-          build_to_subfolder: true
+          python-version: 3.x
+      - run: pip install .[dev,docs]
+      - run: mkdocs build --strict
 
-      - name: Deploy docs
-        if: success() && steps.docs.outputs.commit_type != 'pull'
-        uses: crazy-max/ghaction-github-pages@v2
-        with:
-          target_branch: gh-pages
-          build_dir: deploy
-          keep_history: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    
-    outputs:
-      commit_type: ${{ steps.docs.outputs.commit_type }}
-      current_patch: ${{ steps.docs.outputs.current_patch }}
-  
-  docVersions:
-    needs: build
-    if: needs.build.outputs.commit_type == 'tag'
-    name: update doc versions
+  deploy:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
+      - name: Configure Git Credentials
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+      - uses: actions/setup-python@v5
         with:
-          ref: gh-pages
-
-      - uses: compas-dev/compas-actions.docversions@v1.0.0
+          python-version: 3.x
+      - run: echo "cache_id=$(date --utc '+%V')" >> $GITHUB_ENV
+      - uses: actions/cache@v4
         with:
-          current_patch: ${{ needs.build.outputs.current_patch }}
-
-      - name: Deploy docs
-        if: success()
-        uses: crazy-max/ghaction-github-pages@v2
-        with:
-          target_branch: gh-pages
-          build_dir: ./
-          keep_history: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          key: mkdocs-material-${{ env.cache_id }}
+          path: ~/.cache
+          restore-keys: |
+            mkdocs-material-
+      - run: pip install .[dev,docs]
+      # Replaces the whole gh-pages branch, the old Sphinx latest/ folder included.
+      - run: mkdocs gh-deploy --force

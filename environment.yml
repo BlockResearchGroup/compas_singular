@@ -1,0 +1,12 @@
+name: singular-dev
+channels:
+  - conda-forge
+dependencies:
+  - python >=3.9
+  - pip
+  - compas >=2.4
+  - compas_viewer
+  - invoke >=0.14
+  - pip:
+      - compas_invocations2
+      - -e .[dev,docs,fd,viewer]

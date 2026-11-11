@@ -1,47 +1,17 @@
-"""
-********************************************************************************
-compas_singular.utilities
-********************************************************************************
-
-.. currentmodule:: compas_singular.utilities
-
-
-Lists
-=====
-
-Some utilities to manipulate lists.
-
-.. autosummary::
-    :toctree: generated/
-    :nosignatures:
-
-    list_split
-    sublist_from_to_items_in_closed_list
-    are_items_in_list
-    common_items
-    remove_isomorphism_in_integer_list
-
-
-Pareto
-======
-
-Some utilities to extract Pareto fronts.
-
-.. autosummary::
-    :toctree: generated/
-    :nosignatures:
-
-    extract_pareto_indices
-    is_dominating
-
-
-"""
+"""Helpers for lists and Pareto fronts."""
 
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
+from __future__ import annotations
 
-from .lists import *  # noqa: F401 F403
-from .pareto import *  # noqa: F401 F403
+from compas_singular.utilities.lists import *  # noqa: F401 F403
+from compas_singular.utilities.pareto import *  # noqa: F401 F403
 
-__all__ = [name for name in dir() if not name.startswith('_')]
+import types  # noqa: E402
+
+# Only re-export names bound in this namespace, never the submodules themselves:
+# ``from .foo import *`` also binds ``foo`` as an attribute of this package, and
+# re-exporting that module object shadows any function or subpackage of the same
+# name further up the chain.
+__all__ = [name for name, obj in list(globals().items()) if not name.startswith("_") and not isinstance(obj, types.ModuleType)]

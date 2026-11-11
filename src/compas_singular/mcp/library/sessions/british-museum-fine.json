@@ -1,0 +1,67 @@
+{
+  "after": {
+    "aspect_max": 5.000000000000067,
+    "faces": 432,
+    "irregular_interior": 4,
+    "low_angle": 20.0,
+    "max_angle": 146.30993247402037,
+    "min_angle": 33.69006752597957,
+    "poles": 0,
+    "share_below": 0.0,
+    "worst_face": 324
+  },
+  "before": {
+    "aspect_max": 5.000000000000067,
+    "faces": 432,
+    "irregular_interior": 4,
+    "low_angle": 20.0,
+    "max_angle": 146.30993247402037,
+    "min_angle": 33.69006752597957,
+    "poles": 0,
+    "share_below": 0.0,
+    "worst_face": 324
+  },
+  "fingerprint": {
+    "aspect_max": 5.000000000000067,
+    "dominant": "aspect_max",
+    "faces_band": "medium",
+    "loops": 2,
+    "severity": "poor"
+  },
+  "instruction": "improve the mesh quality",
+  "lesson": "Nothing improved this mesh. relax declined every setting and the boundary pass had to be undone. The right answer was to stop and say the LAYOUT is the limit -- the 33.7 degree corner is where two singularities sit close together, and no amount of smoothing moves a singularity. Do not keep trying settings on a mesh in this state.",
+  "name": "british-museum-fine",
+  "remarks": [
+    "share_below was 0.0, so the low minimum was a single face, not a general condition. relax first because it is the only gated pass.",
+    "relax found no setting that improved all three at once, so it left the mesh alone. That is a pass, not a failure.",
+    "the ungated boundary pass made aspect worse (5.00 -> 14.99) and was undone. The walls here ARE the mesh own boundary, so there is nothing truer to slide onto."
+  ],
+  "source": {
+    "kind": "file",
+    "name": "british museum, density 6"
+  },
+  "steps": [
+    {
+      "action": "load_mesh",
+      "all_improved": null,
+      "arguments": {
+        "walls": 2
+      },
+      "note": null
+    },
+    {
+      "action": "relax",
+      "all_improved": null,
+      "arguments": {
+        "accepted": null,
+        "pin_singularities": false,
+        "pinned": 0,
+        "seams": "free",
+        "sliding": 96
+      },
+      "note": null
+    }
+  ],
+  "title": "british museum fine",
+  "verdict": "acceptable"
+}

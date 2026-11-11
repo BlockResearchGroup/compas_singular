@@ -1,0 +1,69 @@
+{
+  "after": {
+    "aspect_max": 4.576560447562653,
+    "faces": 192,
+    "irregular_interior": 4,
+    "low_angle": 20.0,
+    "max_angle": 134.0326318867266,
+    "min_angle": 45.1876120107219,
+    "poles": 0,
+    "share_below": 0.0,
+    "worst_face": 15
+  },
+  "before": {
+    "aspect_max": 5.0,
+    "faces": 192,
+    "irregular_interior": 4,
+    "low_angle": 20.0,
+    "max_angle": 146.30993247402023,
+    "min_angle": 33.690067525979785,
+    "poles": 0,
+    "share_below": 0.0,
+    "worst_face": 128
+  },
+  "fingerprint": {
+    "aspect_max": 4.576560447562653,
+    "dominant": "aspect_max",
+    "faces_band": "small",
+    "loops": 2,
+    "severity": "poor"
+  },
+  "instruction": "make the elements less distorted",
+  "lesson": "relax alone, at its gentlest setting. The ungated boundary pass afterwards made aspect worse and had to be undone, so the whole improvement came from the one gated call.",
+  "name": "british-museum-medium",
+  "remarks": [
+    "share_below was 0.0, so the low minimum was a single face, not a general condition. relax first because it is the only gated pass.",
+    "the ungated boundary pass made aspect worse (4.58 -> 24.89) and was undone. The walls here ARE the mesh own boundary, so there is nothing truer to slide onto."
+  ],
+  "source": {
+    "kind": "file",
+    "name": "british museum, density 4"
+  },
+  "steps": [
+    {
+      "action": "load_mesh",
+      "all_improved": null,
+      "arguments": {
+        "walls": 2
+      },
+      "note": null
+    },
+    {
+      "action": "relax",
+      "all_improved": true,
+      "arguments": {
+        "accepted": [
+          20,
+          0.3
+        ],
+        "pin_singularities": false,
+        "pinned": 0,
+        "seams": "free",
+        "sliding": 64
+      },
+      "note": null
+    }
+  ],
+  "title": "british museum medium",
+  "verdict": "good"
+}

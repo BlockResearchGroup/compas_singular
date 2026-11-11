@@ -1,22 +1,22 @@
 from __future__ import absolute_import
-from __future__ import print_function
+from __future__ import annotations
 from __future__ import division
+from __future__ import print_function
 
-from compas.topology import adjacency_from_edges
+from typing import TYPE_CHECKING
+
+from compas.topology import vertex_adjacency_from_edges
 from compas.topology import vertex_coloring
-
 from compas_singular.topology import is_adjacency_two_colorable
 
-
-__all__ = [
-    'mesh_vertex_2_coloring',
-    'mesh_vertex_n_coloring',
-    'mesh_face_2_coloring',
-    'mesh_face_n_coloring'
-]
+if TYPE_CHECKING:
+    from compas_singular.datastructures import Mesh
 
 
-def mesh_vertex_2_coloring(mesh):
+__all__ = ["mesh_vertex_2_coloring", "mesh_vertex_n_coloring", "mesh_face_2_coloring", "mesh_face_n_coloring"]
+
+
+def mesh_vertex_2_coloring(mesh: Mesh) -> dict[int, int] | None:
     """Try to color the vertices of a mesh with two colors only without adjacent vertices with the same color.
 
     Parameters
@@ -35,7 +35,7 @@ def mesh_vertex_2_coloring(mesh):
     return is_adjacency_two_colorable(mesh.adjacency)
 
 
-def mesh_vertex_n_coloring(mesh):
+def mesh_vertex_n_coloring(mesh: Mesh) -> dict[int, int]:
     """Color the vertices of a mesh with a minimum number of colors without adjacent vertices with the same color.
 
     Parameters
@@ -53,7 +53,7 @@ def mesh_vertex_n_coloring(mesh):
     return vertex_coloring(mesh.adjacency)
 
 
-def mesh_face_2_coloring(mesh):
+def mesh_face_2_coloring(mesh: Mesh) -> dict[int, int] | None:
     """Try to color the faces of a mesh with two colors only without adjacent faces with the same color.
 
     Parameters
@@ -70,10 +70,10 @@ def mesh_face_2_coloring(mesh):
     """
 
     edges = [(mesh.halfedge[u][v], mesh.halfedge[v][u]) for u, v in mesh.edges() if not mesh.is_edge_on_boundary(u, v)]
-    return is_adjacency_two_colorable(adjacency_from_edges(edges))
+    return is_adjacency_two_colorable(vertex_adjacency_from_edges(edges))
 
 
-def mesh_face_n_coloring(mesh):
+def mesh_face_n_coloring(mesh: Mesh) -> dict[int, int]:
     """Color the faces of a mesh with a minimum number of colors without adjacent faces with the same color.
 
     Parameters
@@ -89,14 +89,14 @@ def mesh_face_n_coloring(mesh):
     """
 
     edges = [(mesh.halfedge[u][v], mesh.halfedge[v][u]) for u, v in mesh.edges() if not mesh.is_edge_on_boundary(u, v)]
-    return vertex_coloring(adjacency_from_edges(edges))
+    return vertex_coloring(vertex_adjacency_from_edges(edges))
 
 
 # ==============================================================================
 # Main
 # ==============================================================================
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     pass
 
     # import compas

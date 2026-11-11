@@ -1,0 +1,6 @@
+{
+  "min_angle":   {"good": 45.0, "usable": 25.0, "poor": 15.0, "higher_is_better": true},
+  "max_angle":   {"good": 135.0, "usable": 155.0, "poor": 168.0, "higher_is_better": false},
+  "aspect_max":  {"good": 2.0, "usable": 4.0, "poor": 8.0, "higher_is_better": false},
+  "share_below": {"good": 0.0, "usable": 0.02, "poor": 0.10, "higher_is_better": false}
+}

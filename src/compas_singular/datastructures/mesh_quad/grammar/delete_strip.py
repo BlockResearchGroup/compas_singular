@@ -1,26 +1,45 @@
-from compas.datastructures import network_disconnected_nodes
-from compas.datastructures import mesh_substitute_vertex_in_faces
-from compas.geometry import centroid_points
-from compas.utilities import pairwise
+"""Delete a strip, welding its two sides and placing merged vertices by a fixed rule; plus the queries that price one.
 
-from ...network import Network
+Pre-splitting to save a boundary is the caller's policy, not done here.
+"""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from compas.datastructures.mesh.operations.substitute import mesh_substitute_vertex_in_faces
+from compas.geometry import centroid_points
+from compas.itertools import pairwise
+from compas.topology import connected_components
+
+if TYPE_CHECKING:
+    from compas_singular.datastructures import QuadMesh
 
 
 __all__ = [
+    "delete_strip",
+    "delete_strips",
+    "collateral_strip_deletions",
+    "total_boundary_deletions",
+    "strips_to_split_to_prevent_boundary_collapse",
 ]
 
 
-def delete_strips(mesh, skeys, callback=None, callback_args=None):
+def delete_strips(mesh: QuadMesh, skeys: list[int]) -> None:
+    """Delete several strips.
+
+    Strip keys are re-checked as the deletions go, because deleting one strip can
+    delete others with it -- see ``collateral_strip_deletions``.
+    """
     for skey in skeys:
-        if skey in mesh.strips():
+        if skey in list(mesh.strips()):
             delete_strip(mesh, skey)
-            if callback:
-                if callable(callback):
-                    callback(mesh, callback_args)
 
 
-def delete_strip(mesh, skey, update_data=True):
-    """Delete a strip.
+def delete_strip(mesh: QuadMesh, skey: int) -> dict[int, int]:
+    """Delete the strip ``skey``, welding the faces either side together.
+
+    Consumed strips go with it and ``face_pole`` is repointed; vertices move.
 
     Parameters
     ----------
@@ -28,104 +47,136 @@ def delete_strip(mesh, skey, update_data=True):
         A quad mesh.
     skey : hashable
         A strip key.
-    update_data : bool, optional
-        Update strip data. Default is True.
 
     Returns
     -------
-    skey_to_skeys : dict, None
-        If strip splits were applied to preserve boundaries, a dictionary of the initial strip key to the refining strip keys. None otherwise.
-
+    dict
+        ``{old vertex: the vertex it was merged into}``. Empty if there was no
+        such strip.
     """
+    if skey not in list(mesh.strips()):
+        return {}
 
-    # build network between vertices of the edges of the strip to delete to get the disconnect parts of vertices to merge
-    network = strip_edge_network(mesh, skey)
-    disc_vertices = network_disconnected_nodes(network)
+    old_boundary_vertices = list(mesh.vertices_on_boundaries())
+
+    # get strip data
+    strip_edges = mesh.strip_edges(skey)
+    strip_faces = mesh.strip_faces(skey)
+
+    # collateral strip deletions
+    collateral_deleted_strips = []
+    for skey_2 in mesh.strips():
+        if skey_2 == skey:
+            continue
+        faces_2 = mesh.strip_faces(skey_2)
+        # ``faces_2`` non-empty: ``all([])`` is True, so a strip with no faces -- one
+        # edge between two polygons -- would be "deleted" by every deletion.
+        if faces_2 and all([fkey in strip_faces for fkey in faces_2]):
+            collateral_deleted_strips.append(skey_2)
+
+    # connect the vertices of the edges of the strip to delete to
+    # get the disconnect parts of vertices to merge
+    vertices = set([i for edge in strip_edges for i in edge])
+    # maps between old and new indices
+    old_to_new = {vkey: i for i, vkey in enumerate(vertices)}
+    new_to_old = {i: vkey for i, vkey in enumerate(vertices)}
+    # adjacency
+    adjacency = {i: [] for i in new_to_old}
+    for u, v in strip_edges:
+        adjacency[old_to_new[u]].append(old_to_new[v])
+        adjacency[old_to_new[v]].append(old_to_new[u])
+    # disconnected parts
+    parts = connected_components(adjacency)
 
     # delete strip faces
-    for fkey in mesh.strip_faces(skey):
+    for fkey in strip_faces:
+        mesh.delete_face_in_strips(fkey)
+    for fkey in strip_faces:
         mesh.delete_face(fkey)
 
     old_vkeys_to_new_vkeys = {}
 
     # merge strip edge vertices that are connected
-    for vertices in disc_vertices:
+    for part in parts:
+        # move back from part vertices to mesh vertices
+        vertices = [new_to_old[vkey] for vkey in part]
 
-        # new vertex
-        x, y, z = centroid_points([mesh.vertex_coordinates(vkey) for vkey in vertices])
-        new_vkey = mesh.add_vertex(attr_dict={'x': x, 'y': y, 'z': z})
-        old_vkeys_to_new_vkeys.update({old_vkey: new_vkey for old_vkey in vertices})
+        # skip adding a vertex if all vertices of the part are disconnected
+        if any(mesh.is_vertex_connected(vkey) for vkey in vertices):
+            # get position based on disconnected vertices that used to be on
+            # the boundary if any
+            if any(not mesh.is_vertex_connected(vkey) for vkey in vertices):
+                points = [mesh.vertex_coordinates(vkey) for vkey in vertices if not mesh.is_vertex_connected(vkey)]
+            # or based on old boundary vertices if any
+            elif any(vkey in old_boundary_vertices for vkey in vertices):
+                points = [mesh.vertex_coordinates(vkey) for vkey in vertices if vkey in old_boundary_vertices]
+            else:
+                points = [mesh.vertex_coordinates(vkey) for vkey in vertices]
 
-        # replace the old vertices
-        for old_vkey in vertices:
-            _ = mesh_substitute_vertex_in_faces(mesh, old_vkey, new_vkey, mesh.vertex_faces(old_vkey))
+            # new vertex
+            x, y, z = centroid_points(points)
+            new_vkey = mesh.add_vertex(attr_dict={"x": x, "y": y, "z": z})
+            old_vkeys_to_new_vkeys.update({old_vkey: new_vkey for old_vkey in vertices})
+
+            # replace the old vertices
+            for old_vkey in vertices:
+                mesh.substitute_vertex_in_strips(old_vkey, new_vkey)
+                mesh_substitute_vertex_in_faces(mesh, old_vkey, new_vkey, mesh.vertex_faces(old_vkey))
 
         # delete the old vertices
         for old_vkey in vertices:
             mesh.delete_vertex(old_vkey)
 
-    # update strip data
-    if update_data:
-        update_strip_data(mesh, old_vkeys_to_new_vkeys)
+    # delete data of deleted strip and collateral deleted strips
+    del mesh.attributes["strips"][skey]
+    for skey_2 in collateral_deleted_strips:
+        del mesh.attributes["strips"][skey_2]
+
+    if "face_pole" in mesh.attributes:
+        for fkey, pole in mesh.attributes["face_pole"].items():
+            if fkey in mesh.attributes["face_pole"]:
+                if pole == mesh.attributes["face_pole"][fkey]:
+                    if pole in old_vkeys_to_new_vkeys:
+                        mesh.attributes["face_pole"][fkey] = old_vkeys_to_new_vkeys[pole]
 
     return old_vkeys_to_new_vkeys
 
 
-def strip_edge_network(mesh, skey):
-    all_strip_vertices = list(set([vkey for edge in mesh.strip_edges(skey) for vkey in edge]))
-    strip_edges = [(u, v) for u, v in mesh.strip_edges(skey) if u != v]  # exception for poles
-    strip_vertices = {vkey: mesh.vertex_coordinates(vkey) for vkey in all_strip_vertices}
-    return Network.from_nodes_and_edges(strip_vertices, strip_edges)
+def collateral_strip_deletions(mesh: QuadMesh, skeys: list[int]) -> list[int]:
+    """The strips that deleting ``skeys`` would delete as well. Mutates nothing."""
+    deleted_fkeys = [fkey for skey in skeys for fkey in mesh.strip_faces(skey)]
+    # A strip with no faces at all is not collateral -- see ``delete_strip``.
+    return [skey for skey in mesh.strips() if skey not in skeys and mesh.strip_faces(skey) and all([fkey in deleted_fkeys for fkey in mesh.strip_faces(skey)])]
 
 
-def update_strip_data(mesh, old_vkeys_to_new_vkeys):
-    strip_data = mesh.attributes['strips'].copy()
-
-    for skey, edges in strip_data.items():
-        new_edges = [tuple([old_vkeys_to_new_vkeys.get(vkey, vkey) for vkey in edge]) for edge in edges]
-
-        # remove collapsed strips
-        if all([u == v for u, v in new_edges]):
-            del mesh.attributes['strips'][skey]
-            continue
-
-        # remove collapsed faces
-        duplicates = []
-        for i, edge in enumerate(new_edges):
-            if i != 0:
-                if edge == new_edges[i - 1]:
-                    duplicates.append(i)
-        for i in reversed(duplicates):
-            del new_edges[i]
-        mesh.attributes['strips'][skey] = new_edges
-
-        # remove collateral collapsed strips
-        if len(new_edges) < 2:
-            del mesh.attributes['strips'][skey]
+def total_boundary_deletions(mesh: QuadMesh, skeys: list[int]) -> list[list[int]]:
+    """The boundaries that deleting ``skeys`` would collapse. Mutates nothing."""
+    deleted_strips = list(skeys) + list(collateral_strip_deletions(mesh, skeys))
+    deleted_boundaries = []
+    deleted_edges = set([edge for skey in deleted_strips for edge in mesh.strip_edges(skey)])
+    for boundary in mesh.boundaries():
+        edges = [(u, v) for u, v in pairwise(boundary + boundary[:1])]
+        if all([(u, v) in deleted_edges or (v, u) in deleted_edges for u, v in edges]):
+            deleted_boundaries.append(boundary)
+    return deleted_boundaries
 
 
-def strips_to_split_to_prevent_boundary_collapse(mesh, skeys):
-    """Computes strips to split to preserve boundaries before deleting strips.
-
-    Parameters
-    ----------
-    mesh : QuadMesh
-        A quad mesh.
-    skey : set
-        Strip keys.
+def strips_to_split_to_prevent_boundary_collapse(mesh: QuadMesh, skeys: list[int]) -> dict[int, int] | None:
+    """What to split before deleting ``skeys`` so every boundary keeps three edges (thesis 5.3.2). Mutates nothing.
 
     Returns
     -------
-    to_split: dict
-        A dictionary of strip keys pointing to the refinement value.
-
+    dict or None
+        ``None`` if the collapse cannot be prevented, ``{}`` if nothing is at
+        risk, else ``{skey: n}`` to refine first. Do not conflate ``None`` and ``{}``.
     """
-
     to_split = {}
     for boundary in mesh.boundaries():
         non_deleted_strips = [mesh.edge_strip((u, v)) for u, v in pairwise(boundary + boundary[:1]) if mesh.edge_strip((u, v)) not in skeys]
 
         if len(non_deleted_strips) == 0:
+            # Nothing survives on this boundary, so nothing can be refined to
+            # save it. ``None``, NOT ``{}`` -- see the tri-state above.
             return None
 
         elif len(non_deleted_strips) == 1:
@@ -145,66 +196,3 @@ def strips_to_split_to_prevent_boundary_collapse(mesh, skeys):
             to_split.update({skey: 2 for skey in non_deleted_strips})
 
     return to_split
-
-
-# ==============================================================================
-# Main
-# ==============================================================================
-
-if __name__ == '__main__':
-    pass
-
-    # import itertools as it
-    # import compas
-    # from compas_singular.datastructures.mesh_quad_coarse.mesh_quad_coarse import CoarseQuadMesh
-    # from compas_singular.datastructures.mesh_quad_pseudo_coarse.mesh_quad_pseudo_coarse import CoarsePseudoQuadMesh
-    # from compas_plotters.meshplotter import MeshPlotter
-
-    # # mesh = CoarsePseudoQuadMesh.from_json('/Users/Robin/Desktop/debug_delete_strip.json')
-    # # vertices, faces = mesh.to_vertices_and_faces()
-    # # pole_coordinates = [mesh.vertex_coordinates(vkey) for vkey in [0, 3, 17, 21]]
-    # # mesh = CoarsePseudoQuadMesh.from_vertices_and_faces_with_poles(vertices, faces, pole_coordinates)
-    # # mesh.collect_strips()
-    # # # for skey in [0, 3, 5]:
-    # # # 	print(mesh.strip_edges(skey))
-    # # # print(mesh.halfedge)
-
-    # # delete_strips(mesh, [0, 3])
-
-    # # #print(mesh.halfedge)
-    # # #delete_strips(mesh, [0, 3, 5])
-    # # # strips = list(mesh.strips())
-    # # # for k in range(len(strips) + 1):
-    # # # 	for skeys in it.combinations(strips, k):
-    # # # 		try:
-    # # # 			mesh2 = mesh.copy()
-    # # # 			delete_strips(mesh2, list(skeys))
-
-    # # # 		except:
-    # # # 			print(skeys)
-    # # # print(mesh.number_of_faces())
-    # # plotter = MeshPlotter(mesh, figsize = (20, 20))
-    # # plotter.draw_vertices(radius = 0.1, text='key')
-    # # plotter.draw_edges()
-    # # plotter.draw_faces()
-    # # plotter.show()
-
-    # mesh = CoarseQuadMesh.from_json('/Users/Robin/Desktop/debug_delete_strip_2.json')
-    # mesh.collect_strips()
-
-    # strips = list(mesh.strips())
-    # print(strips)
-    # for k in range(len(strips) + 1):
-    #     for skeys in it.combinations(strips, k):
-    #         try:
-    #             mesh2 = mesh.copy()
-    #             delete_strips(mesh2, list(skeys))
-    #             print(mesh2.number_of_faces())
-    #         except:
-    #             print(skeys)
-
-    # # plotter = MeshPlotter(mesh, figsize = (20, 20))
-    # # plotter.draw_vertices(radius = 0.1, text='key')
-    # # plotter.draw_edges()
-    # # plotter.draw_faces()
-    # # plotter.show()

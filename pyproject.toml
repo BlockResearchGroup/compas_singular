@@ -1,0 +1,193 @@
+[build-system]
+# 77.0.3: the first setuptools that supports `license` as an SPDX expression with `license-files`.
+# setuptools-scm: the version comes from the git tags (see [tool.setuptools_scm]).
+requires = ["setuptools>=77.0.3", "setuptools-scm>=8"]
+build-backend = "setuptools.build_meta"
+
+# ============================================================================
+# project info
+# ============================================================================
+
+[project]
+name = "compas_singular"
+description = "Topology finding of singularities in quad meshes"
+keywords = ["compas", "quad mesh", "singularities", "topology finding"]
+authors = [
+    { name = "Robin Oval", email = "rpho2@cam.ac.uk" },
+    { name = "Casper Bladt", email = "bladt.casper@gmail.com" },
+]
+license = "MIT"
+license-files = ["LICENSE"]
+readme = "README.md"
+requires-python = ">=3.9"
+dynamic = ["version"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Topic :: Scientific/Engineering",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX",
+    "Operating System :: Unix",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: Implementation :: CPython",
+]
+# Known-good: compas 2.15.1 on Python 3.12, and Rhino 8's CPython 3.9.10 with numpy 2.0.2 and scipy 1.13.1.
+# numpy and scipy are imported directly by framefield and geometry.polyline; pydantic by settings.
+# compas_singular.mcp adds nothing: the `mcp` SDK needs Python 3.10, and the server must run on Rhino 8's 3.9.
+dependencies = [
+    "compas >=2.0, <3",
+    "numpy >=1.21",
+    "scipy >=1.7",
+    "pydantic >=2, <3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "build",
+    "bump-my-version",
+    "compas_invocations2",
+    "invoke >=0.14",
+    "pytest",
+    "ruff",
+    "twine",
+    "wheel",
+]
+docs = [
+    "markdown-callouts >=0.4",
+    "markdown-exec >=1.8",
+    "mike",
+    "mkdocs >=1.6,<2",
+    "mkdocs-autorefs >=1.4",
+    "mkdocs-coverage >=1.0",
+    "mkdocs-git-revision-date-localized-plugin >=1.2",
+    "mkdocs-llmstxt >=0.2",
+    "mkdocs-material >=9.5",
+    "mkdocs-minify-plugin >=0.8",
+    "mkdocs-redirects >=1.2",
+    "mkdocs-section-index >=0.3",
+    "mkdocstrings[python]",
+    "pydantic >=2.10",
+    "tomli >=2.0; python_version < '3.11'",
+]
+# Constrained smoothing (datastructures.mesh.smoothing, CMD07_smooth). Known-good: compas_fd 0.5.4.
+fd = ["compas_fd >=0.5"]
+# The Rhino 8 scene objects used by the plugin commands. Known-good: compas_rui 0.6.0 on Rhino 8's CPython 3.9.10.
+rhino = ["compas_rui >=0.6"]
+# The standalone viewer used by the examples. Known-good: compas_viewer 2.0.2.
+viewer = ["compas_viewer >=2.0", "PyOpenGL >=3.1"]
+
+[project.urls]
+Homepage = "https://blockresearchgroup.github.io/compas_singular"
+Documentation = "https://blockresearchgroup.github.io/compas_singular"
+Repository = "https://github.com/BlockResearchGroup/compas_singular.git"
+Issues = "https://github.com/BlockResearchGroup/compas_singular/issues"
+Changelog = "https://github.com/BlockResearchGroup/compas_singular/blob/main/CHANGELOG.md"
+
+# The MCP server, also runnable as `python -m compas_singular.mcp`.
+[project.scripts]
+compas-singular-mcp = "compas_singular.mcp.__main__:main"
+
+# ============================================================================
+# setuptools config
+# ============================================================================
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+include-package-data = true
+zip-safe = false
+
+# The version comes from the nearest git tag: v0.2.0 builds as 0.2.0, and every commit after a tag
+# gets its own version (0.2.1.dev3+g1a2b3c4), so `pip install -U` from git picks up new commits.
+# The tag v0.2.0.dev0 marks the start of 0.2.0; without it upstream's v0.1.5 would give 0.1.6.devN.
+# Install writes _version.py (git-ignored), which compas_singular.__version__ reads.
+[tool.setuptools_scm]
+version_file = "src/compas_singular/_version.py"
+
+# Excluded from the wheel: thesis code no workflow uses (algorithms.unused) and
+# the RhinoCurve/RhinoSurface wrappers (rhino.geometry), which still extend the
+# COMPAS 1 compas_rhino classes and cannot import under COMPAS 2. MANIFEST.in
+# prunes both too, because include-package-data would otherwise ship them as data.
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["compas_singular*"]
+exclude = [
+    "compas_singular.algorithms.unused*",
+    "compas_singular.rhino.geometry*",
+]
+
+# ============================================================================
+# replace pytest.ini
+# ============================================================================
+
+# testpaths stays `tests` only: collecting src would import compas_singular.rhino outside Rhino.
+[tool.pytest.ini_options]
+minversion = "6.0"
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py", "test.py"]
+addopts = ["-ra", "--strict-markers", "--tb=short"]
+doctest_optionflags = [
+    "NORMALIZE_WHITESPACE",
+    "IGNORE_EXCEPTION_DETAIL",
+    "ALLOW_UNICODE",
+    "ALLOW_BYTES",
+    "NUMBER",
+]
+
+# ============================================================================
+# replace bumpversion.cfg
+# ============================================================================
+
+# bump-my-version (run by `invoke release`) dates the CHANGELOG heading, updates current_version, commits
+# and tags; setuptools-scm turns the tag into the package version. `invoke release` ends with
+# `git push --tags`, so only tags that belong on the remote may exist locally when it runs.
+[tool.bumpversion]
+current_version = "0.1.0"
+message = "Bump version to {new_version}"
+commit = true
+tag = true
+# The default tag message has a "→", which a cp1252 Windows console cannot print.
+tag_message = "Bump version to {new_version}"
+
+[[tool.bumpversion.files]]
+filename = "CHANGELOG.md"
+search = "## Unreleased"
+replace = "## [{new_version}] {now:%Y-%m-%d}"
+
+# ============================================================================
+# replace setup.cfg
+# ============================================================================
+
+[tool.ruff]
+line-length = 179
+indent-width = 4
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["I001"]
+"tests/*" = ["I001"]
+"tasks.py" = ["I001"]
+
+[tool.ruff.lint.isort]
+force-single-line = true
+known-first-party = [
+    "compas",
+    "compas_singular",
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.ruff.lint.pycodestyle]
+max-doc-length = 179
+
+[tool.ruff.format]
+docstring-code-format = true
+docstring-code-line-length = "dynamic"
